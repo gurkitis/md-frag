@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #define MY_BUFFER_SIZE 1024
 #define max(a, b) ((a)>(b)?(a):(b))
+#include <time.h>
 
+struct timespec start, stop;
 char myBuffer[MY_BUFFER_SIZE];
 char* lastPos = myBuffer;
 char* allocAgorithm;
@@ -32,11 +34,11 @@ struct info{
  */
 void printBufferStats(int mode)
 {
-    printf("Book size: %i\n", sizeBook);
+    printf("Information about %s\n", allocAgorithm);
     unsigned int x;
     double meanInnerFrag;
     double meanOutterFrag;
-    double setBlocks = 0.0, totalBlocks = 0.0 , setTotalMemory = 0.0, totalFreeMem = 0.0, maximalFreeMemoryBlock = 0.0;
+    double setBlocks = 0.0, setTotalMemory = 0.0, totalFreeMem = 0.0, maximalFreeMemoryBlock = 0.0, totalAverage = 0.0, totalAvgWithBook = 0.0;
 
 
     for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*) &myBuffer[x] + 1)) {
@@ -45,8 +47,9 @@ void printBufferStats(int mode)
         double blockSize = sizeBook + chunk;
         maximalFreeMemoryBlock = max(maximalFreeMemoryBlock, chunk - size);
         setTotalMemory += size;
+        totalAverage += size/chunk;
+        totalAvgWithBook += size/blockSize;
         totalFreeMem += chunk - size;
-        totalBlocks++;
         if (size > 0) {
             setBlocks++;
             meanInnerFrag += size/chunk;
@@ -56,11 +59,17 @@ void printBufferStats(int mode)
         if (mode == 0 || mode == 2) {
             printf("Address: %u\n", x);
             printf(
-                "=== BLOCK ===\nsize: %u\nchunk: %u\ntotal size: %u\ninner fragmentation: %f\noutter fragmentation: %f\n\n", 
+                "=== BLOCK ===\nsize: %u\nchunk: %u\ntotal size: %u\ninner fragmentation: %f\noutter fragmentation: %f\n\n",
                 (unsigned int)size, (unsigned int)chunk, (unsigned int)blockSize, size/chunk, size/blockSize
             );
         }
         if (myBuffer[x + sizeBook + *((unsigned int*) &myBuffer[x] + 1) - sizeof(char)] == '0') break;
+    }
+    if (mode == 1) {
+        printf("Total set memory:%0.3f, Total free memory:%0.3f \n", setTotalMemory, totalFreeMem);
+        printf("Outter fragmentation: %0.3f%%\n", (1 - (maximalFreeMemoryBlock/totalFreeMem)) *100);
+        printf("Inner average fragmentation: %0.3f, with bookkeeping: %0.3f\n", totalAverage*100/info.chunks, totalAvgWithBook*100/info.chunks);
+        printf("Failed to allocate count: %i, total memory unallocated: %i\n\n", info.totalFailedCnt, info.totalFailed);
     }
 }
 
@@ -159,15 +168,14 @@ void* bestFit(size_t size)
 
 void* firstFit(size_t size)
 {
-    char* firstPtr = NULL;
     unsigned int x;
     for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*) &myBuffer[x] + 1)) {
         if (size + *((unsigned int*) &myBuffer[x]) <= *((unsigned int*) &myBuffer[x] + 1)) {
-            return (void*)firstPtr;
+            return &myBuffer[x];
         }
         if (myBuffer[x + sizeBook + *((unsigned int*) &myBuffer[x] + 1) - sizeof(char)] == '0') break;
     }
-    return (void*)firstPtr;
+    return NULL;
 }
 
 void myAlloc(size_t size)
@@ -181,13 +189,14 @@ void myAlloc(size_t size)
         block = nextFit(size);
     } else if (strcmp(allocAgorithm, "firstFit") == 0) {
         block = firstFit(size);
-    } else if (strcmp(allocAgorithm, "randomFit") == 0) {
+    } /*else if (strcmp(allocAgorithm, "randomFit") == 0) {
         block = randomFit(size);
-    }
+    }*/
 
     if (block != NULL) {
         *((unsigned int*) block) += size;
     }
+
 }
 
 void setMyAlloc(char* filename)
@@ -199,15 +208,20 @@ void setMyAlloc(char* filename)
     }
 
     unsigned int size;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
     while (!feof(file)) {
         fscanf(file, "%u\n", &size);
         myAlloc(size);
     }
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
+    double result = (stop.tv_sec - start.tv_sec) * 1e6 + (stop.tv_nsec - start.tv_nsec) / 1e6;    // in milliseconds
+    printf("\n%s function elapsed time: %0.3f milliseconds\n", allocAgorithm, result);
     fclose(file);
 }
 
 int main(int argc, char** argv)
 {
+
     if (argc != 6) {
         printf("Missing parameters needed\n");
         return 1;
