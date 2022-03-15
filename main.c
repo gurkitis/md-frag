@@ -105,11 +105,24 @@ void* worstFit(size_t size)
     return (void*) worstPtr;
 }
 
+void* firstFit(size_t size)
+{
+    char* firstPtr = NULL;
+    unsigned int x;
+    for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*)&myBuffer[x] + 1)) {
+        if (size + *((unsigned int*)&myBuffer[x]) <= *((unsigned int*) &myBuffer[x] + 1)) {
+            return (void*)firstPtr;
+        }
+        if (myBuffer[x + sizeBook + *((unsigned int*) &myBuffer[x] + 1) - sizeof(char)] == '0') break;
+    }
+    return (void*)firstPtr;
+}
+
 void* myAlloc(size_t size)
 {
     void* block = worstFit(size);
     if (block != NULL) {
-        *((unsigned int*) block) = size;
+        *((unsigned int*) block) += size;
         return (char*) block + sizeBook - sizeof(char);
     }
     return NULL;
