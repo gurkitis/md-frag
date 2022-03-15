@@ -112,6 +112,14 @@ void myAlloc(size_t size)
     void* block;
     if (strcmp(allocAgorithm, "worstFit") == 0) {
         block = worstFit(size);
+    } else if (strcmp(allocAgorithm, "bestFit") == 0) {
+        block = bestFit(size);
+    } else if (strcmp(allocAgorithm, "nextFit") == 0) {
+        block = nextFit(size);
+    } else if (strcmp(allocAgorithm, "firstFit") == 0) {
+        block = firstFit(size);
+    } else if (strcmp(allocAgorithm, "randomFit") == 0) {
+        block = randomFit(size);
     }
 
     if (block != NULL) {
