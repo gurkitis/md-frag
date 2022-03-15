@@ -153,6 +153,19 @@ void* bestFit(size_t size)
     return (void*) bestPtr;
 }
 
+void* firstFit(size_t size)
+{
+    char* firstPtr = NULL;
+    unsigned int x;
+    for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*) &myBuffer[x] + 1)) {
+        if (size + *((unsigned int*) &myBuffer[x]) <= *((unsigned int*) &myBuffer[x] + 1)) {
+            return (void*)firstPtr;
+        }
+        if (myBuffer[x + sizeBook + *((unsigned int*) &myBuffer[x] + 1) - sizeof(char)] == '0') break;
+    }
+    return (void*)firstPtr;
+}
+
 void myAlloc(size_t size)
 {
     void* block;
