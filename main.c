@@ -4,6 +4,8 @@
 #define MY_BUFFER_SIZE 1024
 
 char myBuffer[MY_BUFFER_SIZE];
+char* allocAgorithm;
+
 /*
  *  === BLOCK STRUCT ===
  *  (unsigned int): allocated bytes
@@ -93,10 +95,10 @@ void* worstFit(size_t size)
     char* worstPtr = NULL;
     unsigned int x;
     for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*) &myBuffer[x] + 1)) {
-        if (size <= *((unsigned int*) &myBuffer[x] + 1)) {
+        if (size + *((unsigned int*) &myBuffer[x]) <= *((unsigned int*) &myBuffer[x] + 1)) {
             if (worstPtr == NULL) {
                 worstPtr = &myBuffer[x];
-            } else if (*((unsigned int*) &myBuffer[x]) == 0 && *((unsigned int*) &myBuffer[x] + 1) > *((unsigned int*) worstPtr + 1)) {
+            } else if (*((unsigned int*) &myBuffer[x] + 1) > *((unsigned int*) worstPtr + 1)) {
                 worstPtr = &myBuffer[x];
             }
         }
@@ -105,19 +107,26 @@ void* worstFit(size_t size)
     return (void*) worstPtr;
 }
 
-void* myAlloc(size_t size)
+void myAlloc(size_t size)
 {
-    void* block = worstFit(size);
-    if (block != NULL) {
-        *((unsigned int*) block) = size;
-        return (char*) block + sizeBook - sizeof(char);
+    void* block;
+    if (strcmp(allocAgorithm, "worstFit") == 0) {
+        block = worstFit(size);
     }
-    return NULL;
+
+    if (block != NULL) {
+        *((unsigned int*) block) += size;
+    }
 }
 
 void setMyAlloc(char* filename)
 {
     FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        printf("File: %s can't be accessed\n", filename);
+        exit(EXIT_FAILURE);
+    }
+
     unsigned int size;
     while (!feof(file)) {
         fscanf(file, "%u\n", &size);
@@ -128,20 +137,25 @@ void setMyAlloc(char* filename)
 
 int main(int argc, char** argv)
 {
-    if (argc != 5) {
-        printf("More parameters needed\n");
+    if (argc != 6) {
+        printf("Missing parameters needed\n");
         return 1;
     }
     int x;
     char* sizes;
-    for (x = 1; x < argc; x+=2) {
+    for (x = 1; x < 5; x+=2) {
         if (strcmp(argv[x], "-c") == 0) {
             myAllocInit(argv[x+1]);
         } else if (strcmp(argv[x], "-s") == 0) {
             sizes = argv[x+1];
         }
     }
+
+    allocAgorithm = argv[5];
+
     setMyAlloc(sizes);
+
+    printBufferStats(1);
 
     return 0;
 }
