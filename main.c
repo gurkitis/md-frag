@@ -40,7 +40,6 @@ void printBufferStats(int mode)
     double meanOutterFrag;
     double setBlocks = 0.0, setTotalMemory = 0.0, totalFreeMem = 0.0, maximalFreeMemoryBlock = 0.0, totalAverage = 0.0, totalAvgWithBook = 0.0;
 
-
     for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*) &myBuffer[x] + 1)) {
         double size = (double)*((unsigned int*) &myBuffer[x]);
         double chunk = (double)*((unsigned int*) &myBuffer[x] + 1);
@@ -68,7 +67,7 @@ void printBufferStats(int mode)
     if (mode == 1) {
         printf("Total set memory:%0.3f, Total free memory:%0.3f \n", setTotalMemory, totalFreeMem);
         printf("Outter fragmentation: %0.3f%%\n", (1 - (maximalFreeMemoryBlock/totalFreeMem)) *100);
-        printf("Inner average fragmentation: %0.3f, with bookkeeping: %0.3f\n", totalAverage*100/info.chunks, totalAvgWithBook*100/info.chunks);
+        printf("Inner average fragmentation: %0.3f, with bookkeeping: %0.3f\n", (1 - (totalAverage/info.chunks)) * 100, (1 - (totalAvgWithBook/info.chunks)) * 100);
         printf("Failed to allocate count: %i, total memory unallocated: %i\n\n", info.totalFailedCnt, info.totalFailed);
     }
 }
@@ -91,7 +90,6 @@ void myAllocInit(char* filename)
             info.totalFailedCnt++;
             continue;
         }
-
         *((unsigned int*) &myBuffer[ptr]) = 0;
         ptr+= sizeof(unsigned int);
         *((unsigned int*) &myBuffer[ptr]) = chunk;
@@ -178,6 +176,28 @@ void* firstFit(size_t size)
     return NULL;
 }
 
+int myRandom(number) {
+    int i;
+    i = (rand() % (number - 1)) + 1;
+    return i;
+}
+
+void* randomFit(size_t size) {
+    int random_result = myRandom(info.chunks) - 1;
+    unsigned int x, n = 0;
+    for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*)&myBuffer[x] + 1)) {
+        if(n != random_result) {
+            n++;
+            continue;
+        } else {
+            if (size + *((unsigned int*)&myBuffer[x]) <= *((unsigned int*)&myBuffer[x] + 1)) {
+                return &myBuffer[x];
+            }
+        }
+    }
+    return NULL;
+}
+
 void myAlloc(size_t size)
 {
     void* block;
@@ -189,9 +209,9 @@ void myAlloc(size_t size)
         block = nextFit(size);
     } else if (strcmp(allocAgorithm, "firstFit") == 0) {
         block = firstFit(size);
-    } /*else if (strcmp(allocAgorithm, "randomFit") == 0) {
+    } else if (strcmp(allocAgorithm, "randomFit") == 0) {
         block = randomFit(size);
-    }*/
+    }
 
     if (block != NULL) {
         *((unsigned int*) block) += size;
