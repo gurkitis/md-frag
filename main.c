@@ -118,6 +118,11 @@ void* myAlloc(size_t size)
 void setMyAlloc(char* filename)
 {
     FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        printf("File: %s can't be accessed\n", filename);
+        exit(EXIT_FAILURE);
+    }
+
     unsigned int size;
     while (!feof(file)) {
         fscanf(file, "%u\n", &size);
