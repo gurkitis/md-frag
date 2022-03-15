@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #define MY_BUFFER_SIZE 1024
+#define max(a, b) ((a)>(b)?(a):(b))
 
 char myBuffer[MY_BUFFER_SIZE];
 char* lastPos = myBuffer;
@@ -17,7 +18,12 @@ char* allocAgorithm;
  *  (char): has next block
  */
 const int sizeBook = 2* sizeof(unsigned int) + sizeof(char);
-int chunks = 0;
+struct info{
+    int chunks;
+    int totalFailed;
+    int totalFailedCnt;
+}info;
+
 /*
  * === PRINT MODES === 
  * 0: print each block 
@@ -30,16 +36,16 @@ void printBufferStats(int mode)
     unsigned int x;
     double meanInnerFrag;
     double meanOutterFrag;
-    double setBlocks = 0;
-    double totalBlocks = 0;
-    double setTotalMemory = 0;
+    double setBlocks = 0.0, totalBlocks = 0.0 , setTotalMemory = 0.0, totalFreeMem = 0.0, maximalFreeMemoryBlock = 0.0;
+
 
     for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*) &myBuffer[x] + 1)) {
         double size = (double)*((unsigned int*) &myBuffer[x]);
         double chunk = (double)*((unsigned int*) &myBuffer[x] + 1);
         double blockSize = sizeBook + chunk;
-
+        maximalFreeMemoryBlock = max(maximalFreeMemoryBlock, chunk - size);
         setTotalMemory += size;
+        totalFreeMem += chunk - size;
         totalBlocks++;
         if (size > 0) {
             setBlocks++;
@@ -72,9 +78,9 @@ void myAllocInit(char* filename)
     while (!feof(file)) {
         fscanf(file, "%u\n", &chunk);
         if (ptr + sizeBook + chunk >= MY_BUFFER_SIZE) {
-            printf("Buffer overflow!\n");
-            fclose(file);
-            exit(EXIT_FAILURE);
+            info.totalFailed += chunk;
+            info.totalFailedCnt++;
+            continue;
         }
 
         *((unsigned int*) &myBuffer[ptr]) = 0;
@@ -84,7 +90,7 @@ void myAllocInit(char* filename)
         ptr += chunk;
         myBuffer[ptr] = '1';
         ptr += sizeof(char);
-        chunks++;
+        info.chunks++;
     }
 
     fclose(file);
@@ -114,13 +120,11 @@ void* nextFit(size_t size)
     /*printf("try to set: %i\n", size);*/
     int cnt = 0, x;
     for (x = lastPos - myBuffer; x < MY_BUFFER_SIZE;) {
-        printf("trying to set: %i in %i chunk, takenSpace: %i, totalsize: %i\n", size, x,
-               *((unsigned int *) &myBuffer[x]), *((unsigned int *) &myBuffer[x] + 1));
         if (size + *((unsigned int *) &myBuffer[x]) <= *((unsigned int *) &myBuffer[x] + 1)) {
             tmp = &myBuffer[x];
             break;
         }
-        if (cnt >= chunks) {
+        if (cnt >= info.chunks) {
             lastPos = tmp;
             return NULL;
         }
