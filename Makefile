@@ -1,5 +1,5 @@
 compile:
-	gcc -o main -g main.c -std=c90
+	gcc -o main -g main.c -std=gnu90
 	
 tests: compile
 	./main -c tests/chunks/bigContent.txt -s tests/sizes/bigContent.txt worstFit
