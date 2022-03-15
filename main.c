@@ -109,6 +109,23 @@ void* bestFit(size_t size)
 {
     char* bestPtr = NULL;
     unsigned int x;
+    for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*) &myBuffer[x] + 1)) {
+        if (size + *((unsigned int*) &myBuffer[x]) <= *((unsigned int*) &myBuffer[x] + 1)) {
+            if (bestPtr == NULL) {
+                bestPtr = &myBuffer[x];
+            } else if (*((unsigned int*) &myBuffer[x] + 1) < *((unsigned int*) bestPtr + 1)) {
+                bestPtr = &myBuffer[x];
+            }
+        }
+        if (myBuffer[x + sizeBook + *((unsigned int*) &myBuffer[x] + 1) - sizeof(char)] == '0') break;
+    }
+    return (void*) bestPtr;
+}
+
+void* bestFit(size_t size)
+{
+    char* bestPtr = NULL;
+    unsigned int x;
     for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + ((unsigned int)&myBuffer[x] + 1)) {
         if (size + ((unsigned int)&myBuffer[x]) <= ((unsigned int)&myBuffer[x] + 1)) {
             if (bestPtr == NULL) {
