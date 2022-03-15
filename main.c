@@ -2,8 +2,10 @@
 #include <string.h>
 #include <stdlib.h>
 #define MY_BUFFER_SIZE 1024
+#define max(a, b) ((a)>(b)?(a):(b))
 
 char myBuffer[MY_BUFFER_SIZE];
+char* lastPos = myBuffer;
 char* allocAgorithm;
 
 /*
@@ -16,6 +18,11 @@ char* allocAgorithm;
  *  (char): has next block
  */
 const int sizeBook = 2* sizeof(unsigned int) + sizeof(char);
+struct info{
+    int chunks;
+    int totalFailed;
+    int totalFailedCnt;
+}info;
 
 /*
  * === PRINT MODES === 
@@ -29,16 +36,16 @@ void printBufferStats(int mode)
     unsigned int x;
     double meanInnerFrag;
     double meanOutterFrag;
-    double setBlocks = 0;
-    double totalBlocks = 0;
-    double setTotalMemory = 0;
+    double setBlocks = 0.0, totalBlocks = 0.0 , setTotalMemory = 0.0, totalFreeMem = 0.0, maximalFreeMemoryBlock = 0.0;
+
 
     for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*) &myBuffer[x] + 1)) {
         double size = (double)*((unsigned int*) &myBuffer[x]);
         double chunk = (double)*((unsigned int*) &myBuffer[x] + 1);
         double blockSize = sizeBook + chunk;
-
+        maximalFreeMemoryBlock = max(maximalFreeMemoryBlock, chunk - size);
         setTotalMemory += size;
+        totalFreeMem += chunk - size;
         totalBlocks++;
         if (size > 0) {
             setBlocks++;
@@ -71,9 +78,9 @@ void myAllocInit(char* filename)
     while (!feof(file)) {
         fscanf(file, "%u\n", &chunk);
         if (ptr + sizeBook + chunk >= MY_BUFFER_SIZE) {
-            printf("Buffer overflow!\n");
-            fclose(file);
-            exit(EXIT_FAILURE);
+            info.totalFailed += chunk;
+            info.totalFailedCnt++;
+            continue;
         }
 
         *((unsigned int*) &myBuffer[ptr]) = 0;
@@ -83,6 +90,7 @@ void myAllocInit(char* filename)
         ptr += chunk;
         myBuffer[ptr] = '1';
         ptr += sizeof(char);
+        info.chunks++;
     }
 
     fclose(file);
@@ -105,6 +113,61 @@ void* worstFit(size_t size)
         if (myBuffer[x + sizeBook + *((unsigned int*) &myBuffer[x] + 1) - sizeof(char)] == '0') break;
     }
     return (void*) worstPtr;
+}
+void* nextFit(size_t size)
+{
+    char *tmp = lastPos;
+    /*printf("try to set: %i\n", size);*/
+    int cnt = 0, x;
+    for (x = lastPos - myBuffer; x < MY_BUFFER_SIZE;) {
+        if (size + *((unsigned int *) &myBuffer[x]) <= *((unsigned int *) &myBuffer[x] + 1)) {
+            tmp = &myBuffer[x];
+            break;
+        }
+        if (cnt >= info.chunks) {
+            lastPos = tmp;
+            return NULL;
+        }
+        if (myBuffer[x + sizeBook + *((unsigned int *) &myBuffer[x] + 1) - sizeof(char)] == '0') {
+            x = 0;
+            cnt++;
+            continue;
+        }
+        x += sizeBook + *((unsigned int *) &myBuffer[x] + 1);
+        cnt++;
+    }
+    lastPos = tmp;
+    return (void *) tmp;
+}
+
+void* bestFit(size_t size)
+{
+    char* bestPtr = NULL;
+    unsigned int x;
+    for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*) &myBuffer[x] + 1)) {
+        if (size + *((unsigned int*) &myBuffer[x]) <= *((unsigned int*) &myBuffer[x] + 1)) {
+            if (bestPtr == NULL) {
+                bestPtr = &myBuffer[x];
+            } else if (*((unsigned int*) &myBuffer[x] + 1) < *((unsigned int*) bestPtr + 1)) {
+                bestPtr = &myBuffer[x];
+            }
+        }
+        if (myBuffer[x + sizeBook + *((unsigned int*) &myBuffer[x] + 1) - sizeof(char)] == '0') break;
+    }
+    return (void*) bestPtr;
+}
+
+void* firstFit(size_t size)
+{
+    char* firstPtr = NULL;
+    unsigned int x;
+    for (x = 0; x < MY_BUFFER_SIZE; x += sizeBook + *((unsigned int*) &myBuffer[x] + 1)) {
+        if (size + *((unsigned int*) &myBuffer[x]) <= *((unsigned int*) &myBuffer[x] + 1)) {
+            return (void*)firstPtr;
+        }
+        if (myBuffer[x + sizeBook + *((unsigned int*) &myBuffer[x] + 1) - sizeof(char)] == '0') break;
+    }
+    return (void*)firstPtr;
 }
 
 void myAlloc(size_t size)
