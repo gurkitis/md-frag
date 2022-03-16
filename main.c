@@ -228,12 +228,12 @@ void setMyAlloc(char* filename)
     }
 
     unsigned int size;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+    clock_gettime(CLOCK_REALTIME, &start);
     while (!feof(file)) {
         fscanf(file, "%u\n", &size);
         myAlloc(size);
     }
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &stop);
+    clock_gettime(CLOCK_REALTIME, &stop);
     double result = (stop.tv_sec - start.tv_sec) * 1e6 + (stop.tv_nsec - start.tv_nsec) / 1e6;    // in milliseconds
     printf("\n%s function elapsed time: %0.3f milliseconds\n", allocAgorithm, result);
     fclose(file);
