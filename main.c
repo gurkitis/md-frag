@@ -11,14 +11,15 @@ char* lastPos = myBuffer;
 char* allocAgorithm;
 
 /*
- *  === BLOCK STRUCT ===
- *  (unsigned int): allocated bytes
- *  (unsigned int): chunk size
- *  ~~~
- *  (char*): chunk conentents
- *  ~~~
- *  (char): has next block
+ *  ========= BLOCK STRUCT =========
+ *  (unsigned int): allocated bytes | *((unsigned int*) &myBuffer)
+ *  (unsigned int): chunk size      | *((unsigned int*) &myBuffer + 1)
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+ *  (char*): chunk conentents       |
+ *  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+ *  (char): has next block          | &myBuffer + *((unsigned int*) &myBuffer + 1) + 2*sizeof(unigned int)
  */
+
 const int sizeBook = 2* sizeof(unsigned int) + sizeof(char);
 struct info{
     int chunks;
@@ -72,6 +73,9 @@ void printBufferStats(int mode)
     }
 }
 
+/*
+ *  Initilizes chunks in myBuffer from file 
+ */
 void myAllocInit(char* filename)
 {
     static unsigned int ptr = 0;
@@ -121,6 +125,7 @@ void* worstFit(size_t size)
     }
     return (void*) worstPtr;
 }
+
 void* nextFit(size_t size)
 {
     char *tmp = lastPos;
@@ -198,6 +203,9 @@ void* randomFit(size_t size) {
     return NULL;
 }
 
+/*
+ *  malloc() interpretation, based on selected alogrithm
+ */
 void myAlloc(size_t size)
 {
     void* block;
@@ -219,6 +227,9 @@ void myAlloc(size_t size)
 
 }
 
+/*
+ * Calls myAlloc for each requested memory allocation request in file
+ */
 void setMyAlloc(char* filename)
 {
     FILE* file = fopen(filename, "r");
@@ -239,6 +250,12 @@ void setMyAlloc(char* filename)
     fclose(file);
 }
 
+/*
+ *  Takes 3 arguments:
+ *     * -c chunks file
+ *     * -s sizes files
+ *     * allocation algorithm
+ */
 int main(int argc, char** argv)
 {
 
